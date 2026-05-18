@@ -186,18 +186,74 @@ export default function App() {
 
   useEffect(() => { setTimeout(() => setVis(true), 200); }, []);
   useEffect(() => { if (step !== "analyzing") return; const iv = setInterval(() => setDots(d => d.length >= 3 ? "" : d + "."), 400); return () => clearInterval(iv); }, [step]);
+  
+  const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
   const go = () => { const t = addr.trim(); if (!t) return; if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(t)) { setChain(CHAINS.find(c => c.id === "solana")); setStep("paste"); } else setStep("chain"); };
-  const run = async () => {
-    if (!data.trim()) return; setStep("analyzing"); setResult(""); setErr(""); setRisk(null);
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4000, system: SYSTEM_PROMPT, messages: [{ role: "user", content: `Analyze this wallet:\n\nAddress: ${addr}\nChain: ${chain.name}\nExplorer: ${chain.explorer}\n\nWallet data:\n\n${data}` }] }) });
-      const d = await r.json(); if (d.error) { setErr(d.error.message); setStep("paste"); return; }
-      const t = d.content?.map(b => b.text || "").join("\n") || ""; setResult(t);
-      const m = t.match(/Overall Risk:\s*(\d+)\/100/i); if (m) setRisk(parseInt(m[1])); setStep("result");
-    } catch (e) { setErr(e.message); setStep("paste"); }
-  };
+  const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  "http://localhost:3000";
+
+const run = async () => {
+  if (!data.trim()) return;
+
+  setStep("analyzing");
+  setResult("");
+  setErr("");
+  setRisk(null);
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/api/analyze`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          address: addr,
+          chain: chain.name,
+          explorer: chain.explorer,
+          walletData: data,
+        }),
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result.error?.message ||
+          result.error ||
+          "Analysis failed"
+      );
+    }
+
+    const text =
+      result.content
+        ?.map((b) => b.text || "")
+        .join("\n") || "No response";
+
+    setResult(text);
+
+    const match = text.match(
+      /Overall Risk:\s*(\d+)\/100/i
+    );
+
+    if (match) {
+      setRisk(parseInt(match[1]));
+    }
+
+    setStep("result");
+  } catch (error) {
+    console.error(error);
+
+    setErr(error.message);
+
+    setStep("paste");
+  }
+};
+
   const reset = () => { setStep("input"); setAddr(""); setChain(null); setData(""); setResult(""); setRisk(null); setErr(""); };
 
   const gc = { background: "rgba(8, 14, 24, 0.32)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "16px", boxShadow: "0 8px 40px rgba(0,0,0,0.35)" };
