@@ -190,9 +190,7 @@ export default function App() {
   const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
   const go = () => { const t = addr.trim(); if (!t) return; if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(t)) { setChain(CHAINS.find(c => c.id === "solana")); setStep("paste"); } else setStep("chain"); };
-  const API_BASE =
-  import.meta.env.VITE_API_BASE ||
-  "http://localhost:3000";
+
 
 const run = async () => {
   if (!data.trim()) return;
